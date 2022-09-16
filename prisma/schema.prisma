@@ -1,0 +1,173 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserType {
+  NORMAL
+  ADMIN
+}
+
+enum Week {
+  DOMINGO
+  LUNES
+  MARTES
+  MIERCOLES
+  JUEVES
+  VIERNES
+  SABADO
+}
+
+enum Estado {
+  CONFIRMED
+  CANCELED
+  ONGOING
+  FINISHED
+}
+
+model User {
+  id           Int                      @id @default(autoincrement())
+  userType     UserType
+  name         String
+  lastName     String?
+  phone        String?                  @unique
+  email        String                   @unique
+  avRating     Float?
+  isDeleted    Boolean                  @default(false)
+  password     String
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+  profilePicId Int?                     @unique
+  profilePic   Image?                   @relation(fields: [profilePicId], references: [id])
+  interestedIn UserInterestedActivity[]
+  created      UserCreatedActivities[]
+  enrolledIn   UserInEvent[]
+}
+
+model Activity {
+  id              Int                      @id @default(autoincrement())
+  name            String                   @unique
+  description     String
+  price           Float                    @default(0)
+  avRating        Float                    @default(0)
+  isDeleted       Boolean                  @default(false)
+  startDate       DateTime
+  endDate         DateTime
+  address         String
+  maxQuota        Int
+  latitude        Float
+  longitude       Float
+  updatedAt       DateTime                 @updatedAt
+  discipline      Discipline               @relation(fields: [disciplineId], references: [id])
+  disciplineId    Int
+  repeatable      Boolean                  @default(true)
+  interestedUsers UserInterestedActivity[]
+  createdBy       UserCreatedActivities[]
+  plan            Plan[]
+  event           Event[]
+}
+
+model UserInterestedActivity {
+  user       User     @relation(fields: [userId], references: [id])
+  userId     Int
+  activity   Activity @relation(fields: [activityId], references: [id])
+  activityId Int
+  createdAt  DateTime @default(now())
+
+  @@id([userId, activityId])
+}
+
+model UserCreatedActivities {
+  user       User     @relation(fields: [userId], references: [id])
+  userId     Int
+  activity   Activity @relation(fields: [activityId], references: [id])
+  activityId Int
+  createdAt  DateTime @default(now())
+
+  @@id([userId, activityId])
+}
+
+model Plan {
+  id         Int      @id @default(autoincrement())
+  startTime  DateTime
+  endTime    DateTime
+  days       Week[]
+  activity   Activity @relation(fields: [activityId], references: [id])
+  activityId Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Discipline {
+  id          Int           @id @default(autoincrement())
+  name        String
+  description String
+  images      Image[]
+  parents     ParentChild[] @relation("Child")
+  childs      ParentChild[] @relation("Parent")
+  Activity    Activity[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model ParentChild {
+  //esto funciona al revéz
+  // parent = la disciplina que ES el parent, no la disciplina parent de esa disciplina
+  parent   Discipline @relation("Parent", fields: [parentId], references: [id])
+  parentId Int
+  // parent = la disciplina que ES un child, no la disciplina child de esa disciplina
+  child    Discipline @relation("Child", fields: [childId], references: [id])
+  childId  Int
+
+  //o sea: si parentId =  1, y childId = 2,     1 es child de 2
+  @@id([parentId, childId])
+}
+
+model Image {
+  id           Int         @id @default(autoincrement())
+  url          String
+  user         User?
+  discipline   Discipline? @relation(fields: [disciplineId], references: [id])
+  disciplineId Int?
+  uploadedAt   DateTime    @default(now())
+}
+
+model Event {
+  id            Int           @id @default(autoincrement())
+  startDate     DateTime
+  endDate       DateTime
+  state         Estado        @default(CONFIRMED)
+  address       String
+  isDeleted     Boolean       @default(false)
+  activity      Activity      @relation(fields: [activityId], references: [id])
+  activityId    Int
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  enrolledUsers UserInEvent[]
+}
+
+model Rating {
+  id         Int          @id @default(autoincrement())
+  review     String
+  points     Int
+  createdAt  DateTime     @default(now())
+  ratedEvent UserInEvent?
+}
+
+model UserInEvent {
+  user     User   @relation(fields: [userId], references: [id])
+  userId   Int
+  event    Event  @relation(fields: [eventId], references: [id])
+  eventId  Int
+  rating   Rating @relation(fields: [ratingId], references: [id])
+  ratingId Int    @unique
+
+  @@id([userId, eventId, ratingId])
+}
