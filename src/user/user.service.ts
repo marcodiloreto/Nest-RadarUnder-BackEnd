@@ -5,7 +5,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class UserService {
 
     constructor(private readonly prisma: PrismaService) { }
-
+    //TODO: quien usa esto?
     async findUserByEmail(email: string) {
         const user = await this.prisma.user.findUnique({
             where: {
@@ -14,6 +14,17 @@ export class UserService {
         })
 
         if (!user) throw new NotFoundException('No se encontró un usuario registrado con ese Email')
+        return user;
+    }
+
+    async findUserById(id: number) {
+        const user = await this.prisma.user.findUnique({
+            where: {
+                id
+            }
+        })
+
+        if (!user) throw new NotFoundException('No se encontró un usuario registrado con ese Id')
         return user;
     }
 }

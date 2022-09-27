@@ -1,7 +1,7 @@
 import { SetMetadata } from "@nestjs/common"
-import { UserType } from "@prisma/client"
+import { UserPermission } from "@prisma/client"
 
 
-export function Roles(...roles: UserType[]) {
+export function Roles(...roles: UserPermission[]) {
     return SetMetadata('roles', roles)
 }

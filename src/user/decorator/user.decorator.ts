@@ -1,8 +1,8 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common'
-import { UserType } from '@prisma/client'
+import { UserPermission } from '@prisma/client'
 
 export interface IUser {
-    id: number, name: string, type: UserType, iat: number, exp: number
+    id: number, name: string, type: UserPermission, iat: number, exp: number
 }
 
 export const User = createParamDecorator((data, context: ExecutionContext) => {

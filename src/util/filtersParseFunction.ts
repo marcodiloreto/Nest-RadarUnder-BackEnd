@@ -4,7 +4,7 @@ import { Week } from "@prisma/client";
 export function weekDaysParser(weekString: string): Week[] {
     const week: string[] = weekString.split(',');
     return week.map((item) => {
-        console.log(item)
+
         switch (item) {
             case 'LUNES':
                 return Week.LUNES

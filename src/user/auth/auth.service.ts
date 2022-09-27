@@ -1,8 +1,10 @@
 import { ConflictException, Injectable, PreconditionFailedException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import * as bcrypt from 'bcryptjs'
-import { UserType, User } from '@prisma/client';
+import { UserPermission, User, UserType } from '@prisma/client';
 import * as jwt from 'jsonwebtoken'
+import { AuthUserResponseDto, UserResponseDto } from '../dtos/auth.dto';
+import { UserService } from '../user.service';
 
 
 interface CreateUserData {
@@ -17,11 +19,11 @@ interface CreateUserData {
 @Injectable()
 export class AuthService {
 
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(private readonly prismaService: PrismaService, private readonly userService: UserService) { }
+    //TODO: esto en realidad es createLocalUser. Faltan los otros create
+    async createUser({ name, lastName, password, email, phone, profilePic }: CreateUserData): Promise<AuthUserResponseDto> {
 
-    async createUser({ name, lastName, password, email, phone, profilePic }: CreateUserData) {
-
-        const exists = await this.prisma.user.findFirst({
+        const exists = await this.prismaService.user.findFirst({
             where: {
                 OR: [{
                     email
@@ -36,7 +38,7 @@ export class AuthService {
         }
 
         const image = (profilePic &&
-            await this.prisma.image.create({
+            await this.prismaService.image.create({
                 data: {
                     url: profilePic
                 }
@@ -44,25 +46,28 @@ export class AuthService {
         )
 
         const passHash = await bcrypt.hash(password, 10)
-        const createdUser = await this.prisma.user.create({
+        const createdUser = await this.prismaService.user.create({
             data: {
                 name,
                 email,
                 password: passHash,
-                lastName,
-                phone,
-                userType: UserType.NORMAL,
+                ...(lastName && { lastName }),
+                ...(phone && { phone }),
+                userType: 'LOCAL',
+                userPermission: UserPermission.NORMAL,
                 ...(image && { profilePicId: image.id })
-            }
+            },
+
         });
-        return this.generateJWT(createdUser)
+        const token = this.generateJWT(createdUser)
+        return new AuthUserResponseDto(token, createdUser)
     }
 
-    async login(email, password) {
-        const user = await this.prisma.user.findUnique({
+    async login(email, password): Promise<AuthUserResponseDto> {
+        const user = await this.prismaService.user.findUnique({
             where: {
                 email,
-            }
+            },
         })
         if (!user) throw new PreconditionFailedException('Ese usuario no existe')
 
@@ -70,18 +75,26 @@ export class AuthService {
 
         if (!isValid) throw new PreconditionFailedException('Contraseña incorrecta')
 
-        return this.generateJWT(user);
+        const token = this.generateJWT(user)
+
+        return new AuthUserResponseDto(token, user)
     }
 
+    async validateJWT(user: { id: number, name: string, userPermission: UserPermission, userType: UserType }) {
+        const userData = await this.userService.findUserById(user.id)
+        const token = this.generateJWT(user)
 
-    generateJWT(user: User) {
+        return new AuthUserResponseDto(token, userData)
+    }
+    generateJWT(user: { id: number, name: string, userPermission: UserPermission, userType: UserType }) {
         return jwt.sign({
             id: user.id,
             name: user.name,
-            type: user.userType,
+            userPermission: user.userPermission,
+            userType: user.userType
         },
             process.env.JWT_SECRET, {
-            expiresIn: 36000
+            expiresIn: 604800
         })
     }
 }

@@ -5,8 +5,8 @@ interface createDiscipline {
     name: string
     description: string
     images: { url: string }[]
-    childs?: { parentId: number, childId?: number }[]
-    parents?: { childId: number, parentId?: number }[]
+    childs?: { parentId?: number, childId: number }[]
+    parents?: { childId?: number, parentId: number }[]
 }
 
 interface updateDiscipline {
@@ -50,7 +50,7 @@ export class DisciplineService {
 
         if (parents) {
             const insertParents = parents.map((item) => {
-                item.parentId = discipline.id
+                item.childId = discipline.id
                 return item as Required<InsertRelation>
             })
             await this.prisma.parentChild.createMany({
@@ -60,7 +60,7 @@ export class DisciplineService {
 
         if (childs) {
             const insertChilds = childs.map((item) => {
-                item.childId = discipline.id
+                item.parentId = discipline.id
                 return item as Required<InsertRelation>
             })
             await this.prisma.parentChild.createMany({

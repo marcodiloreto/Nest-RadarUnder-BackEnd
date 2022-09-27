@@ -1,12 +1,13 @@
 import { CanActivate, ExecutionContext, Injectable } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
-import { UserType } from "@prisma/client";
+import { UserPermission, UserType } from '@prisma/client';
 import * as jwt from 'jsonwebtoken'
 
 interface JWTPayload {
     id: number;
     name: string;
-    type: UserType;
+    userPermission: UserPermission;
+    userType: UserType
     iat: number;
     exp: number;
 }
@@ -19,7 +20,7 @@ export class AuthGuard implements CanActivate {
         const roles = this.reflector.getAllAndOverride('roles', [
             context.getHandler(),
             context.getClass()
-        ]) as UserType[]
+        ]) as UserPermission[]
 
         if (!roles?.length) return true;
 
@@ -27,7 +28,7 @@ export class AuthGuard implements CanActivate {
 
         try {
             const user = jwt.verify(userKey, process.env.JWT_SECRET) as JWTPayload
-            if (roles.includes(user.type)) return true
+            if (roles.includes(user.userPermission)) return true
         } catch (error) {
             console.log(error)
             return false

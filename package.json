@@ -24,7 +24,7 @@
     "@nestjs/common": "^8.0.0",
     "@nestjs/core": "^8.0.0",
     "@nestjs/platform-express": "^8.0.0",
-    "@prisma/client": "^3.14.0",
+    "@prisma/client": "^4.3.1",
     "@types/bcryptjs": "^2.4.2",
     "@types/jsonwebtoken": "^8.5.8",
     "bcryptjs": "^2.4.3",
@@ -32,7 +32,7 @@
     "class-validator": "^0.13.2",
     "datejs": "^1.0.0-rc3",
     "jsonwebtoken": "^8.5.1",
-    "prisma": "^3.14.0",
+    "prisma": "^4.3.1",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
     "rxjs": "^7.2.0"

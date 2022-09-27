@@ -3,6 +3,7 @@ import { Week } from '@prisma/client';
 import { EventService } from 'src/event/event.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import 'datejs'
+import { CreateActivityDto, CreateActivityResponse, CreatedActivitylistData } from './dtos/activity.dto';
 
 export interface Filters {
     price?: {
@@ -167,7 +168,7 @@ export class ActivityService {
         })
     }
 
-
+    //TODO: isDeleted ya no es booleano (poner fecha del momento de baja)
     async deleteActivity(id: number) {
         const exists = await this.prisma.activity.findUnique({
             where: {
@@ -177,10 +178,11 @@ export class ActivityService {
 
         if (!exists) throw new NotFoundException('No se encontrño la actividad')
 
+        const deleteTime = new Date()
         return await this.prisma.activity.update({
             where: { id },
             data: {
-                isDeleted: true
+                isDeleted: deleteTime
             }
         })
     }
@@ -198,7 +200,7 @@ export class ActivityService {
         return await this.prisma.activity.update({
             where: { id },
             data: {
-                isDeleted: false
+                isDeleted: null
             }
         })
     }
@@ -209,6 +211,26 @@ export class ActivityService {
             data: body
         })
     }
+
+    async getCreatedActivities(user): Promise<CreateActivityResponse> {
+        const activities = await this.prisma.activity.findMany({
+            where: {
+                createdBy: {
+                    every: {
+                        userId: {
+                            equals: user.id
+                        }
+                    }
+                }
+            }
+        })
+
+        const response = { activities: activities.map((act) => { return new CreatedActivitylistData(act) }) }
+        return response;
+    }
+
+
+
     async validateUserOwnership(userId: number, activityId: number) {
         const userInActivity = await this.prisma.activity.findUnique({
             where: {

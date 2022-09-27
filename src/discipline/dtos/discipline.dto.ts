@@ -16,12 +16,12 @@ export class CreateDisciplineDto {
     @IsArray()
     @ValidateNested({ each: true })
     @Type(() => parentInsert)
-    childs?: parentInsert[]
+    parents?: parentInsert[]
     @IsOptional()
     @IsArray()
     @ValidateNested({ each: true })
     @Type(() => childInsert)
-    parents?: childInsert[]
+    childs?: childInsert[]
 }
 
 class Image {

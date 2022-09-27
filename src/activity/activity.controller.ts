@@ -1,11 +1,12 @@
 import { Body, Controller, Delete, ForbiddenException, Get, Param, ParseIntPipe, Post, Put, Query, UnauthorizedException } from '@nestjs/common';
 import { User } from 'src/user/decorator/user.decorator';
 import { ActivityService, Filters } from './activity.service';
-import { addCreatorDto, CreateActivityDto, UpdateActivityDto } from './dtos/activity.dto';
+import { addCreatorDto, CreateActivityDto, CreateActivityResponse, UpdateActivityDto } from './dtos/activity.dto';
 import { addDaysToday, parseRepeatable, weekDaysParser } from 'src/util/filtersParseFunction';
 import { UserService } from 'src/user/user.service';
 import { Roles } from 'src/decorators/roles.decorator';
-import { UserType } from '@prisma/client';
+import { UserPermission } from '@prisma/client';
+import { threadId } from 'worker_threads';
 @Controller('activity')
 export class ActivityController {
 
@@ -79,6 +80,13 @@ export class ActivityController {
         return this.activityService.createEvents();
     }*/
 
+    @Get('/created')
+    @Roles(UserPermission.NORMAL, UserPermission.ADMIN)
+    getCreatedActivities(@User() user): Promise<CreateActivityResponse> {
+
+        return this.activityService.getCreatedActivities(user)
+    }
+
 
     @Get('/:id')
     getActivityById(@Param('id', ParseIntPipe) id: number) {
@@ -87,14 +95,14 @@ export class ActivityController {
     }
 
     @Post('/')
-    @Roles(UserType.NORMAL)
+    @Roles(UserPermission.NORMAL, UserPermission.ADMIN)
     createActivity(@Body() body: CreateActivityDto, @User() user) {
         // if (!user) throw new ForbiddenException('Tenés que iniciar sesión para crear actividades')
         return this.activityService.createActivity(body, user)
     }
 
     @Put('/:id')
-    @Roles(UserType.NORMAL)
+    @Roles(UserPermission.NORMAL)
     async updateActivity(@Body() body: UpdateActivityDto, @User() user, @Param('id', ParseIntPipe) id: number) {
         // if (!user) throw new ForbiddenException('No podés hacer eso si no estás logueado')
         await this.activityService.validateUserOwnership(user.id, id)
@@ -102,7 +110,7 @@ export class ActivityController {
     }
 
     @Put('/:id/creator')
-    @Roles(UserType.NORMAL)
+    @Roles(UserPermission.NORMAL)
     async addCreator(@Body() body: addCreatorDto, @User() user, @Param('id', ParseIntPipe) id: number) {
         // if (!user) throw new ForbiddenException('No podés hacer eso si no estás logueado')
         await this.activityService.validateUserOwnership(user.id, id)
@@ -111,7 +119,7 @@ export class ActivityController {
     }
 
     @Delete('/:id')
-    @Roles(UserType.NORMAL)
+    @Roles(UserPermission.NORMAL)
     async deleteActivity(@Param('id', ParseIntPipe) id: number, @User() user) {
         // if (!user) throw new ForbiddenException('No podés hacer eso si no estás logueado')
         await this.activityService.validateUserOwnership(user.id, id)
@@ -119,12 +127,14 @@ export class ActivityController {
     }
 
     @Delete('/:id/undo')
-    @Roles(UserType.NORMAL)
+    @Roles(UserPermission.NORMAL)
     async undoDeleteActivity(@Param('id', ParseIntPipe) id: number, @User() user) {
         // if (!user) throw new ForbiddenException('No podés hacer eso si no estás logueado')
         await this.activityService.validateUserOwnership(user.id, id)
         return this.activityService.undoDeleteActivity(id)
     }
 
+    //TODO: FOLLOW ACTIVITY, + INSCRIBE
+    //TODO: Atrasar vencimiento de actividad
 
 }

@@ -1,5 +1,5 @@
-import { Week } from "@prisma/client"
-import { Type } from "class-transformer"
+import { Activity, UserCreatedActivities, UserInterestedActivity, Week } from "@prisma/client"
+import { Exclude, Expose, Type } from "class-transformer"
 import { ArrayUnique, IsArray, IsDate, IsEmail, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, ValidateNested } from "class-validator"
 
 export class AcivitySearchResponseDto {
@@ -7,7 +7,6 @@ export class AcivitySearchResponseDto {
     ownersName: string[]
     rating: number
     address: string
-    events: [] //añadir eventos
     maxQuota: number
     enrolled: number
     longitude: number
@@ -26,7 +25,7 @@ export class CreateActivityDto {
     @IsDate()
     startDate: Date
     @IsDate()
-    endDate?: Date
+    endDate: Date
     @IsString()
     @IsNotEmpty()
     address: string
@@ -36,7 +35,7 @@ export class CreateActivityDto {
     maxQuota?: number
     @IsPositive()
     @IsInt()
-    disciplineId: number
+    disciplineId: number //TODO: tiene que soportar arrays de disciplinas
 
     @IsArray()
     @ValidateNested({ each: true })
@@ -104,4 +103,55 @@ export class UpdateActivityDto {
 export class addCreatorDto {
     @IsEmail()
     email: string
+}
+
+export class CreateActivityResponse {
+    activities: CreatedActivitylistData[]
+}
+
+export class CreatedActivitylistData {
+
+    id: number
+
+    name: string
+
+    description: string
+    price: number
+    avRating: number
+    @Exclude()
+    isDeleted: number
+
+    startDate: Date
+
+    endDate?: Date
+
+    // @Expose({ name: 'endDate' }) hace falta esto?
+    // get isEndDate() {
+    //     if (this.endDate) {
+    //         return this.endDate
+    //     }
+    //     return undefined
+    // }
+
+    plan?: Plan[]
+    address: string
+    maxQuota: number
+    latitude: number
+    longitude: number
+    @Exclude()
+    updatedAt: Date
+
+    disciplineIds: { id: number }[]
+    @Exclude()
+    repeatable: boolean
+    @Exclude()
+    interestedUsers?: UserInterestedActivity[]
+    @Exclude()
+    createdBy?: UserCreatedActivities[]
+    @Exclude()
+    event?: Event[]
+
+    constructor(activity: Partial<Activity>) {
+        Object.assign(this, activity)
+    }
 }

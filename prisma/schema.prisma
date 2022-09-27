@@ -10,9 +10,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum UserType {
+enum UserPermission {
   NORMAL
   ADMIN
+}
+
+enum UserType {
+  LOCAL
+  GOOGLE
+  FACEBOOK
+  INSTAGRAM
+  //IOS
 }
 
 enum Week {
@@ -33,22 +41,23 @@ enum Estado {
 }
 
 model User {
-  id           Int                      @id @default(autoincrement())
-  userType     UserType
-  name         String
-  lastName     String?
-  phone        String?                  @unique
-  email        String                   @unique
-  avRating     Float?
-  isDeleted    Boolean                  @default(false)
-  password     String
-  createdAt    DateTime                 @default(now())
-  updatedAt    DateTime                 @updatedAt
-  profilePicId Int?                     @unique
-  profilePic   Image?                   @relation(fields: [profilePicId], references: [id])
-  interestedIn UserInterestedActivity[]
-  created      UserCreatedActivities[]
-  enrolledIn   UserInEvent[]
+  id             Int                      @id @default(autoincrement())
+  userPermission UserPermission
+  userType       UserType
+  name           String
+  lastName       String?
+  phone          String?                  @unique
+  email          String                   @unique
+  avRating       Float?
+  isDeleted      DateTime?
+  password       String
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  profilePicId   Int?                     @unique
+  profilePic     Image?                   @relation(fields: [profilePicId], references: [id])
+  interestedIn   UserInterestedActivity[]
+  created        UserCreatedActivities[]
+  enrolledIn     UserInEvent[]
 }
 
 model Activity {
@@ -57,7 +66,7 @@ model Activity {
   description     String
   price           Float                    @default(0)
   avRating        Float                    @default(0)
-  isDeleted       Boolean                  @default(false)
+  isDeleted       DateTime?
   startDate       DateTime
   endDate         DateTime
   address         String
@@ -65,7 +74,7 @@ model Activity {
   latitude        Float
   longitude       Float
   updatedAt       DateTime                 @updatedAt
-  discipline      Discipline               @relation(fields: [disciplineId], references: [id])
+  discipline      Discipline               @relation(fields: [disciplineId], references: [id]) //TODO: tiene que soportar arrays de disciplinas
   disciplineId    Int
   repeatable      Boolean                  @default(true)
   interestedUsers UserInterestedActivity[]
@@ -138,6 +147,7 @@ model Image {
   disciplineId Int?
   uploadedAt   DateTime    @default(now())
 }
+//TODO: images!! importantitismo. Falta en la BD con las activities
 
 model Event {
   id            Int           @id @default(autoincrement())
@@ -145,7 +155,7 @@ model Event {
   endDate       DateTime
   state         Estado        @default(CONFIRMED)
   address       String
-  isDeleted     Boolean       @default(false)
+  isDeleted     DateTime?
   activity      Activity      @relation(fields: [activityId], references: [id])
   activityId    Int
   createdAt     DateTime      @default(now())

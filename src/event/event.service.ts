@@ -26,6 +26,7 @@ export class EventService {
         })
         if (!exists) throw new NotFoundException('No se pudo encontrar el evento en la base de datos')
 
+        //TODO: si el estado es CANCELED, poner fecha de baja
         return await this.prisma.event.update({
             where: { id },
             data: {
@@ -62,6 +63,8 @@ export class EventService {
         })
 
     }
+
+
 
 
 }
