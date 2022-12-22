@@ -19,10 +19,6 @@ export class CreateUserDto {
     @IsString()
     @MinLength(8)
     password: string
-    @IsString()
-    @IsOptional()
-    profilePic?: string
-
 }
 
 export class loginDto {
@@ -59,6 +55,7 @@ export class UserResponseDto {
     userPermission: UserPermission
     userType: UserType
     name: String
+    lastName: String
 
 
     @Exclude()
@@ -66,8 +63,6 @@ export class UserResponseDto {
 
     @Exclude()
     email: String
-    @Exclude()
-    lastName: String
     @Exclude()
     phone: String
     @Exclude()

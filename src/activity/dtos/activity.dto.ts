@@ -1,7 +1,7 @@
-import { Activity, UserCreatedActivities, UserInterestedActivity, Week } from "@prisma/client"
+import { Activity, UserCreatedActivities, UserInterestedActivity, Week, Image, ActivitiesToDisciplines, User } from "@prisma/client"
 import { Exclude, Expose, Type } from "class-transformer"
-import { ArrayUnique, IsArray, IsDate, IsEmail, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, ValidateNested } from "class-validator"
-
+import { ArrayUnique, IsArray, IsBoolean, IsDate, IsDefined, IsEmail, IsEnum, IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional, IsString, ValidateNested } from "class-validator"
+import { PartialType } from '@nestjs/mapped-types'
 export class AcivitySearchResponseDto {
     name: string
     ownersName: string[]
@@ -12,6 +12,16 @@ export class AcivitySearchResponseDto {
     longitude: number
     latitude: number
 }
+class Location {
+    @IsString()
+    @IsNotEmpty()
+    address: string
+    @IsNumber()
+    lng: number
+    @IsNumber()
+    lat: number
+}
+
 export class CreateActivityDto {
     @IsString()
     @IsNotEmpty()
@@ -19,33 +29,46 @@ export class CreateActivityDto {
     @IsString()
     @IsNotEmpty()
     description: string
+
     @IsNumber()
-    @IsOptional()
-    price?: number
+    price: number
     @IsDate()
     startDate: Date
     @IsDate()
     endDate: Date
-    @IsString()
-    @IsNotEmpty()
-    address: string
-    @IsOptional()
-    @IsPositive()
+
     @IsInt()
-    maxQuota?: number
-    @IsPositive()
-    @IsInt()
-    disciplineId: number //TODO: tiene que soportar arrays de disciplinas
+    maxQuota: number
 
     @IsArray()
     @ValidateNested({ each: true })
+    @Type(() => Discipline)
+    disciplines: Discipline[]
+
+    @IsBoolean()
+    repeatable: boolean
+
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
     @Type(() => Plan)
-    plan: Plan[]
-    @IsNumber()
-    longitude: number
-    @IsNumber()
-    latitude: number
+    plan?: Plan[]
+
+
+    @IsObject()
+    @ValidateNested()
+    @Type(() => Location)
+    location: Location
 }
+
+
+
+
+class Discipline {
+    @IsNumber()
+    id: number
+}
+
 
 export class Plan {
     @IsDate()
@@ -57,48 +80,7 @@ export class Plan {
     days: Week[]
 }
 
-export class UpdateActivityDto {
-    @IsOptional()
-    @IsString()
-    @IsNotEmpty()
-    name?: string
-    @IsOptional()
-    @IsString()
-    @IsNotEmpty()
-    description?: string
-    @IsNumber()
-    @IsOptional()
-    price?: number
-    @IsOptional()
-    @IsDate()
-    startDate?: Date
-    @IsDate()
-    @IsOptional()
-    endDate?: Date
-    @IsString()
-    @IsNotEmpty()
-    @IsOptional()
-    address?: string
-    @IsOptional()
-    @IsPositive()
-    @IsInt()
-    maxQuota?: number
-    @IsPositive()
-    @IsInt()
-    @IsOptional()
-    disciplineId?: number
-    /*@IsOptional()
-    @IsArray()
-    @ValidateNested({ each: true })
-    @Type(() => Plan)
-    plan?: Plan[]*/
-    @IsNumber()
-    @IsOptional()
-    longitude?: number
-    @IsNumber()
-    @IsOptional()
-    latitude?: number
-}
+export class UpdateActivityDto extends PartialType(CreateActivityDto) { }
 
 export class addCreatorDto {
     @IsEmail()
@@ -112,26 +94,24 @@ export class CreateActivityResponse {
 export class CreatedActivitylistData {
 
     id: number
-
     name: string
-
     description: string
     price: number
+    @Exclude() //TODO: rating y maxQuota 
     avRating: number
+
+    @Expose({ name: 'deleted' })
+    get getIsDeleted() {
+        if (this.isDeleted) return true
+        return undefined
+    }
+
     @Exclude()
-    isDeleted: number
+    isDeleted: Date
 
     startDate: Date
 
     endDate?: Date
-
-    // @Expose({ name: 'endDate' }) hace falta esto?
-    // get isEndDate() {
-    //     if (this.endDate) {
-    //         return this.endDate
-    //     }
-    //     return undefined
-    // }
 
     plan?: Plan[]
     address: string
@@ -141,17 +121,126 @@ export class CreatedActivitylistData {
     @Exclude()
     updatedAt: Date
 
-    disciplineIds: { id: number }[]
+    @Expose({ name: 'disciplines' })
+    get getDiscipline() {
+        return this.disciplines.map(obj => {
+            return obj.discipline
+        })
+    }
+
     @Exclude()
+    disciplines: { discipline: Discipline }[]
     repeatable: boolean
     @Exclude()
     interestedUsers?: UserInterestedActivity[]
+
+    @Expose({ name: 'createdBy' })
+    get getcreated() {
+        return this.createdBy.map(object => {
+            return object.user
+        })
+
+    }
+
+    @Expose({ name: 'enrolled' })
+    get getEnrolled() {
+        return this._count.interestedUsers
+    }
+
     @Exclude()
-    createdBy?: UserCreatedActivities[]
+    _count: { interestedUsers: number }
+
+    @Exclude()
+    createdBy?: { user: User }[]
+
     @Exclude()
     event?: Event[]
+
+    images: { url: string }[]
 
     constructor(activity: Partial<Activity>) {
         Object.assign(this, activity)
     }
+}
+
+export class ActivityControlData {
+
+    id: number
+    name: string
+    description: string
+    price: number
+    @Exclude()
+    avRating: number
+    @Exclude()
+    isDeleted: Date
+    startDate: Date
+    endDate: Date
+    maxQuota: number
+
+    @Expose({ name: 'location' })
+    get getLocation() {
+        return {
+            address: this.address,
+            lat: this.latitude,
+            lng: this.longitude
+        }
+    }
+    @Expose({ name: 'disciplines' })
+    get getDisciplines() {
+        return this.disciplines.map(
+            (item) => {
+                return item.discipline
+            }
+        )
+    }
+    @Exclude()
+    address: string
+    @Exclude()
+    latitude: number
+    @Exclude()
+    longitude: number
+    @Exclude()
+    updatedAt: Date
+
+    images: Image[]
+
+    @Exclude()
+    disciplines: Disciplines[]
+
+    repeatable: Boolean
+    @Exclude()
+    interestedUsers: UserInterestedActivity[]
+    @Exclude()
+    createdBy: UserCreatedActivities[]
+
+    plan: Plan[]
+
+    constructor(activity: Partial<Activity>) {
+        Object.assign(this, activity)
+    }
+}
+
+export class ActivityDetails {
+    @Expose({ name: 'phone' })
+    get getPhone() {
+        return this.createdBy[0].user.phone
+    }
+
+    @Expose({ name: 'email' })
+    get getEmail() {
+        return this.createdBy[0].user.email
+    }
+
+    @Exclude()
+    createdBy: { user: { phone: string; email: string } }[]
+
+    images: { url: string }[]
+
+    constructor(details: any) {
+        Object.assign(this, details)
+    }
+}
+
+interface Disciplines extends ActivitiesToDisciplines {
+    discipline: Discipline
 }

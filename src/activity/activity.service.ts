@@ -1,11 +1,17 @@
 import { ConflictException, Injectable, NotFoundException, PreconditionFailedException, UnauthorizedException } from '@nestjs/common';
-import { Week } from '@prisma/client';
+import { Plan, Week } from '@prisma/client';
 import { EventService } from 'src/event/event.service';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { ImageService } from 'src/image/image.service'
 import 'datejs'
-import { CreateActivityDto, CreateActivityResponse, CreatedActivitylistData } from './dtos/activity.dto';
+import { ActivityControlData, ActivityDetails, CreateActivityResponse, CreatedActivitylistData, UpdateActivityDto } from './dtos/activity.dto';
+import { create } from 'domain';
 
 export interface Filters {
+    name?: {
+        contains: string;
+        mode: 'insensitive'
+    }
     price?: {
         lte?: number
         gte?: number
@@ -44,34 +50,54 @@ interface CreateActivityData {
     price?: number,
     startDate: Date,
     endDate?: Date,
-    address: string,
     maxQuota?: number,
-    disciplineId: number,
-    plan: {
+    disciplines: { id: number }[],
+    plan?: {
         startTime: Date,
         endTime: Date,
         days: Week[]
     }[],
-    longitude: number,
-    latitude: number,
+    location: {
+        address: string,
+        lng: number,
+        lat: number,
+
+    }
+    repeatable: boolean,
 }
 
-interface updateActivityData {
-    name?: string,
-    description?: string,
-    price?: number,
-    startDate?: Date,
-    endDate?: Date,
-    address?: string,
-    maxQuota?: number,
-    disciplineId?: number,
-    longitude?: number,
-    latitude?: number,
+class updateActivityData {
+    name?: string
+    description?: string
+    price?: number
+    startDate?: Date
+    endDate?: Date
+    address?: string
+    maxQuota?: number
+    longitude?: number
+    latitude?: number
+
+    constructor(activity: UpdateActivityDto, lat: number, lng: number) {
+        delete activity.location
+        Object.assign(this, activity)
+        this.latitude = lat
+        this.longitude = lng
+
+    }
+}
+
+class UpdateActivityFullData extends updateActivityData {
+    disciplines?: { id: number }[]
+    plan?: { startTime: Date, endTime: Date, days: Week[] }[]
+
+    constructor(activity: UpdateActivityDto) {
+        super(activity, activity.location.lat, activity.location.lng)
+    }
 }
 @Injectable()
 export class ActivityService {
 
-    constructor(private readonly prisma: PrismaService, private readonly eventService: EventService) { }
+    constructor(private readonly prisma: PrismaService, private readonly eventService: EventService, private readonly imageService: ImageService) { }
 
     async getAllActivities(filters: Filters)/*: Promise<AcivitySearchResponseDto[]>*/ {
         //TODO: logica de streaming / buffering de resultados Activityservice.getAllActivities
@@ -80,18 +106,43 @@ export class ActivityService {
     }
 
     async getActivityById(id) {
-
-
-        return await this.prisma.activity.findUnique({
+        const activity = await this.prisma.activity.findUnique({
             where: {
                 id
+            },
+            include: {
+                plan: {
+                    select: {
+                        startTime: true,
+                        endTime: true,
+                        days: true
+                    }
+                },
+                images: {
+                    select: {
+                        id: true,
+                        url: true
+                    }
+                },
+                disciplines: {
+                    include: {
+                        discipline: {
+                            select: {
+                                id: true,
+                                name: true
+                            }
+                        }
+                    }
+                }
             }
         })
+
+        return new ActivityControlData(activity)
     }
 
 
 
-    async createActivity({ name, description, price, startDate, endDate, address, maxQuota, disciplineId, plan, latitude, longitude }: CreateActivityData,
+    async createActivity({ name, description, price, startDate, endDate, location, maxQuota = 0, disciplines, plan, repeatable }: CreateActivityData,
         user) {
 
         //chequear que no exista nombre
@@ -110,14 +161,14 @@ export class ActivityService {
                 price,
                 startDate,
                 endDate,
-                address,
+                address: location.address,
                 maxQuota,
-                disciplineId,
                 plan: {
                     create: plan
                 },
-                latitude,
-                longitude,
+                latitude: location.lat,
+                longitude: location.lng,
+                repeatable
             },
             select: {
                 id: true,
@@ -133,11 +184,16 @@ export class ActivityService {
                 address: true
             }
         })
+
+        await this.linkDisciplines(activity.id, disciplines)
+
+
         //añadir creador
         await this.addCreator(user.id, activity.id)
 
+        //TODO: ESTO ESTÁ COMO EL ORRRRRTO, debería hacerse con un Cron de Nest y estar en un service aparte
         //calcular fechas para eventos segun plan!!! importanteeeeee y despues hacer una create many 
-        await this.eventService.createFourEach(activity)
+        //await this.eventService.createFourEach(activity)
 
         return activity
     }
@@ -168,7 +224,7 @@ export class ActivityService {
         })
     }
 
-    //TODO: isDeleted ya no es booleano (poner fecha del momento de baja)
+
     async deleteActivity(id: number) {
         const exists = await this.prisma.activity.findUnique({
             where: {
@@ -205,10 +261,49 @@ export class ActivityService {
         })
     }
 
-    async updateActivity(body: updateActivityData, id: number) {
+    async updateActivity(body: UpdateActivityDto, id: number) {
+
+        const activity = new UpdateActivityFullData(body)
+
+        const { disciplines, plan } = activity
+        delete activity.disciplines
+        delete activity.plan
+        if (disciplines) {
+            const createManyArgs = disciplines.map(discipline => {
+                return { disciplineId: discipline.id, activityId: id }
+            })
+
+            await this.prisma.activitiesToDisciplines.deleteMany({
+                where: {
+                    activityId: id
+                }
+            })
+
+            await this.prisma.activitiesToDisciplines.createMany({
+                data: createManyArgs
+            })
+        }
+
+        if (plan) {
+
+            const createManyArgs = plan.map((p) => {
+                return { ...p, activityId: id }
+            })
+
+            await this.prisma.plan.deleteMany({
+                where: {
+                    activityId: id
+                }
+            })
+
+            await this.prisma.plan.createMany({
+                data: createManyArgs
+            })
+        }
+
         return await this.prisma.activity.update({
             where: { id },
-            data: body
+            data: activity as updateActivityData
         })
     }
 
@@ -222,14 +317,89 @@ export class ActivityService {
                         }
                     }
                 }
+            },
+            include: {
+                images: {
+                    take: 3,
+                    select: {
+                        url: true,
+                    }
+                },
+                createdBy: {
+                    take: 1,   //TODO: debería devolver todo. cappacitar front para ello
+                    select: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                lastName: true,
+                                avRating: true,
+                                profilePic: {
+                                    select: {
+                                        url: true
+                                    }
+                                }
+                            }
+                        }
+                    },
+                },
+                _count: {
+                    select: {
+                        interestedUsers: true
+                    }
+                },
+                disciplines: {
+                    select: {
+                        discipline: {
+                            select: {
+                                id: true,
+                                name: true,
+                            }
+                        }
+                    }
+                },
+                plan: {
+                    select: {
+                        id: true,
+                        startTime: true,
+                        endTime: true,
+                        days: true,
+                    }
+                }
             }
         })
-
         const response = { activities: activities.map((act) => { return new CreatedActivitylistData(act) }) }
         return response;
     }
 
+    async extendDetails(id: number) {
+        const details = await this.prisma.activity.findUnique({
+            where: { id },
+            select: {
+                images: {
+                    select: {
+                        url: true,
+                        id: true
+                    }
+                },
+                createdBy: {
+                    take: 1,   //TODO: debería devolver todo. capacitar front para ello
+                    select: {
+                        user: {
+                            select: {
+                                phone: true,
+                                email: true,
+                                //TODO: whatsapp ??? instagram ???? facebook ???
+                            }
+                        }
+                    },
+                },
 
+            }
+        })
+
+        return new ActivityDetails(details)
+    }
 
     async validateUserOwnership(userId: number, activityId: number) {
         const userInActivity = await this.prisma.activity.findUnique({
@@ -240,15 +410,27 @@ export class ActivityService {
                 createdBy: true
             }
         })
+        if (!userInActivity) throw new UnauthorizedException('No sos el dueño de esta actividad')
         const { createdBy } = userInActivity
         var flag = false;
         createdBy.forEach((activityUser) => {
-            console.log(activityUser)
             if (activityUser.userId === userId) {
                 flag = true;
             }
         });
         if (!flag) throw new UnauthorizedException('No sos el dueño de esta actividad')
+    }
+
+    async linkDisciplines(activityId: number, disciplines: { id: number }[]) {
+        //TODO: sera mejor mapear el array a un objeto compatible conn el .crateMany({}) ???
+        disciplines.forEach(async (discipline) => {
+            await this.prisma.activitiesToDisciplines.create({
+                data: {
+                    activityId,
+                    disciplineId: discipline.id
+                }
+            })
+        })
     }
 
 

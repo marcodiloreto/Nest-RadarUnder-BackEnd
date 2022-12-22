@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Estado, Week } from '@prisma/client';
+import { ActivityState, Week } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { getDaysTillNext, getNext4dates, weekEnumToNumber } from 'src/util/dateManagementFunctions';
 
@@ -20,7 +20,7 @@ export class EventService {
 
     constructor(private readonly prisma: PrismaService) { }
 
-    async changeStatus(id: number, status: Estado) {
+    async changeStatus(id: number, status: ActivityState) {
         const exists = await this.prisma.event.findUnique({
             where: { id }
         })

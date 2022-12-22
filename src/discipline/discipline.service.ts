@@ -1,10 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { ImageService } from 'src/image/image.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 interface createDiscipline {
     name: string
     description: string
-    images: { url: string }[]
     childs?: { parentId?: number, childId: number }[]
     parents?: { childId?: number, parentId: number }[]
 }
@@ -21,30 +21,46 @@ interface InsertRelation {
 @Injectable()
 export class DisciplineService {
 
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(private readonly prisma: PrismaService, private readonly imageService: ImageService) { }
 
     async findAll(/*fatherId*/) {
         //TODO: buscar disciplina a partir de un padre  DisciplineService.getAll()
         //TODO: streaming - buffer de resultados.  DisciplineService.getAll()
-        return await this.prisma.discipline.findMany({})
+        return this.prisma.discipline.findMany({
+            include: {
+                images: true
+            }
+        })
+    }
+
+    async findSome(text: string) {
+
+        return this.prisma.discipline.findMany({
+            where: {
+                name: {
+                    contains: text,
+                    mode: 'insensitive'
+                }
+            },
+            take: 5,
+            orderBy: {
+                name: 'asc'
+            }
+        })
+
     }
 
     async findById(id: number) {
-        return await this.prisma.discipline.findUnique({
+        return this.prisma.discipline.findUnique({
             where: { id }
         })
     }
 
-    async create({ name, description, images, parents, childs }: createDiscipline) {
+    async create({ name, description, parents, childs }: createDiscipline) {
         const discipline = await this.prisma.discipline.create({
             data: {
                 name,
                 description,
-                images: {
-                    createMany: {
-                        data: images
-                    }
-                },
             }
         })
 

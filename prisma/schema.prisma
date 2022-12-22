@@ -33,7 +33,8 @@ enum Week {
   SABADO
 }
 
-enum Estado {
+//TODO: apply activityState
+enum ActivityState {
   CONFIRMED
   CANCELED
   ONGOING
@@ -61,11 +62,11 @@ model User {
 }
 
 model Activity {
-  id              Int                      @id @default(autoincrement())
-  name            String                   @unique
+  id              Int                       @id @default(autoincrement())
+  name            String                    @unique
   description     String
-  price           Float                    @default(0)
-  avRating        Float                    @default(0)
+  price           Float                     @default(0)
+  avRating        Float                     @default(0)
   isDeleted       DateTime?
   startDate       DateTime
   endDate         DateTime
@@ -73,10 +74,10 @@ model Activity {
   maxQuota        Int
   latitude        Float
   longitude       Float
-  updatedAt       DateTime                 @updatedAt
-  discipline      Discipline               @relation(fields: [disciplineId], references: [id]) //TODO: tiene que soportar arrays de disciplinas
-  disciplineId    Int
-  repeatable      Boolean                  @default(true)
+  updatedAt       DateTime                  @updatedAt
+  images          Image[]
+  disciplines     ActivitiesToDisciplines[]
+  repeatable      Boolean                   @default(true)
   interestedUsers UserInterestedActivity[]
   createdBy       UserCreatedActivities[]
   plan            Plan[]
@@ -114,16 +115,17 @@ model Plan {
   updatedAt  DateTime @updatedAt
 }
 
+//TODO: nombre del icono que lo representa (IonIcons)
 model Discipline {
-  id          Int           @id @default(autoincrement())
+  id          Int                       @id @default(autoincrement())
   name        String
   description String
   images      Image[]
-  parents     ParentChild[] @relation("Child")
-  childs      ParentChild[] @relation("Parent")
-  Activity    Activity[]
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  parents     ParentChild[]             @relation("Child")
+  childs      ParentChild[]             @relation("Parent")
+  activities  ActivitiesToDisciplines[]
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
 }
 
 model ParentChild {
@@ -142,18 +144,20 @@ model ParentChild {
 model Image {
   id           Int         @id @default(autoincrement())
   url          String
+  public_id    String
   user         User?
   discipline   Discipline? @relation(fields: [disciplineId], references: [id])
   disciplineId Int?
+  activity     Activity?   @relation(fields: [activityId], references: [id])
+  activityId   Int?
   uploadedAt   DateTime    @default(now())
 }
-//TODO: images!! importantitismo. Falta en la BD con las activities
 
 model Event {
   id            Int           @id @default(autoincrement())
   startDate     DateTime
   endDate       DateTime
-  state         Estado        @default(CONFIRMED)
+  state         ActivityState @default(CONFIRMED)
   address       String
   isDeleted     DateTime?
   activity      Activity      @relation(fields: [activityId], references: [id])
@@ -180,4 +184,14 @@ model UserInEvent {
   ratingId Int    @unique
 
   @@id([userId, eventId, ratingId])
+}
+
+model ActivitiesToDisciplines {
+  discipline   Discipline @relation(fields: [disciplineId], references: [id])
+  disciplineId Int
+  activity     Activity   @relation(fields: [activityId], references: [id])
+  activityId   Int
+  createdAt    DateTime   @default(now())
+
+  @@id([disciplineId, activityId])
 }

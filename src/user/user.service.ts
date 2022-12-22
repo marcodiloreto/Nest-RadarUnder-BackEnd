@@ -6,6 +6,7 @@ export class UserService {
 
     constructor(private readonly prisma: PrismaService) { }
     //TODO: quien usa esto?
+    //TODO: subir foto perfil / cambiar foto perfil
     async findUserByEmail(email: string) {
         const user = await this.prisma.user.findUnique({
             where: {

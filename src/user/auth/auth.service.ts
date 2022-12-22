@@ -13,15 +13,14 @@ interface CreateUserData {
     email: string
     phone?: string
     password: string
-    profilePic?: string
-}
 
+}
 @Injectable()
 export class AuthService {
 
     constructor(private readonly prismaService: PrismaService, private readonly userService: UserService) { }
     //TODO: esto en realidad es createLocalUser. Faltan los otros create
-    async createUser({ name, lastName, password, email, phone, profilePic }: CreateUserData): Promise<AuthUserResponseDto> {
+    async createUser({ name, lastName, password, email, phone }: CreateUserData): Promise<AuthUserResponseDto> {
 
         const exists = await this.prismaService.user.findFirst({
             where: {
@@ -37,14 +36,6 @@ export class AuthService {
             throw new ConflictException(exists.email === email ? "Ese Email ya está en uso" : "Ese teléfono ya está en uso")
         }
 
-        const image = (profilePic &&
-            await this.prismaService.image.create({
-                data: {
-                    url: profilePic
-                }
-            })
-        )
-
         const passHash = await bcrypt.hash(password, 10)
         const createdUser = await this.prismaService.user.create({
             data: {
@@ -55,7 +46,6 @@ export class AuthService {
                 ...(phone && { phone }),
                 userType: 'LOCAL',
                 userPermission: UserPermission.NORMAL,
-                ...(image && { profilePicId: image.id })
             },
 
         });
