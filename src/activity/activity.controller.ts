@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, ForbiddenException, Get, Param, ParseIntPipe, Post, Put, Query, UnauthorizedException, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { User } from 'src/user/decorator/user.decorator';
 import { ActivityService, Filters } from './activity.service';
-import { addCreatorDto, CreateActivityDto, CreateActivityResponse, UpdateActivityDto } from './dtos/activity.dto';
+import { addCreatorDto, CreateActivityDto, CreatedActivityResponse, UpdateActivityDto } from './dtos/activity.dto';
 import { addDaysToday, parseRepeatable, weekDaysParser } from 'src/util/filtersParseFunction';
 import { UserService } from 'src/user/user.service';
 import { Roles } from 'src/decorators/roles.decorator';
@@ -25,9 +25,10 @@ export class ActivityController {
         @Query('repeatable') repeatable?: string,
         @Query('maxQuota') maxMaxQuota?: number,
         @Query('minQuota') minMaxQuota?: number,
-        // @Query('minEnrolled') minEnrolled?: number, NOT SUPPORTED BY PRISMA
-        // @Query('maxEnrolled') maxEnrolled?:number, NOT SUPPERTED BY PRISMA
+        // @Query('minEnrolled') minEnrolled?: number, NOT yet SUPPORTED BY PRISMA
+        // @Query('maxEnrolled') maxEnrolled?:number, NOT yet SUPPORTED BY PRISMA
         @Query('discipline') disciplineId?: number // buscarlo por nombre????
+        //TODO: busqueda por horarios
     ) {
         //parse weekArray
         const isSetWeekDay = typeof weekDays !== 'undefined' ? true : false;
@@ -85,7 +86,7 @@ export class ActivityController {
 
     @Get('/created')
     @Roles(UserPermission.NORMAL, UserPermission.ADMIN)
-    getCreatedActivities(@User() user): Promise<CreateActivityResponse> {
+    getCreatedActivities(@User() user): Promise<CreatedActivityResponse> {
 
         return this.activityService.getCreatedActivities(user)
     }

@@ -87,7 +87,7 @@ export class addCreatorDto {
     email: string
 }
 
-export class CreateActivityResponse {
+export class CreatedActivityResponse {
     activities: CreatedActivitylistData[]
 }
 
@@ -244,3 +244,125 @@ export class ActivityDetails {
 interface Disciplines extends ActivitiesToDisciplines {
     discipline: Discipline
 }
+
+
+export class ActivityDataForMapMarker {
+
+    id: number
+    name: string
+    @Exclude()
+    description: string
+    price: number
+
+    @Exclude() //TODO: rating
+    avRating: number
+
+    @Exclude()
+    isDeleted: Date
+
+    startDate: Date
+
+    endDate?: Date
+
+    plan?: Plan[]
+    address: string
+    maxQuota: number
+    latitude: number
+    longitude: number
+    @Exclude()
+    updatedAt: Date
+
+    @Expose({ name: 'disciplines' })
+    get getDiscipline() {
+        return this.disciplines.map(obj => {
+            return obj.discipline
+        })
+    }
+
+    @Exclude()
+    disciplines: { discipline: Discipline }[]
+    repeatable: boolean
+    @Exclude()
+    interestedUsers?: UserInterestedActivity[]
+
+    @Expose({ name: 'createdBy' })
+    get getcreated() {
+        return this.createdBy.map(object => {
+            return object.user
+        })
+
+    }
+
+    @Expose({ name: 'enrolled' })
+    get getEnrolled() {
+        return this._count.interestedUsers
+    }
+
+    @Exclude()
+    _count: { interestedUsers: number }
+
+    @Exclude()
+    createdBy?: { user: User }[]
+
+    @Exclude()
+    event?: Event[]
+
+    constructor(activityWithDetails: Partial<Activity & {
+        disciplines: {
+            discipline: {
+                id: number;
+                name: string;
+            };
+        }[];
+        plan: {
+            id: number;
+            startTime: Date;
+            endTime: Date;
+            days: Week[];
+        }[];
+        createdBy: {
+            user: {
+                id: number;
+                name: string;
+                avRating: number;
+                lastName: string;
+                profilePic: {
+                    url: string
+                };
+            };
+        }[];
+        _count: {
+            interestedUsers: number
+        }
+    }>) {
+        Object.assign(this, activityWithDetails)
+    }
+}
+
+// Activity & {
+//     disciplines: {
+//         discipline: {
+//             id: number;
+//             name: string;
+//         };
+//     }[];
+//     plan: {
+//         id: number;
+//         startTime: Date;
+//         endTime: Date;
+//         days: Week[];
+//     }[];
+//     createdBy: {
+//         user: {
+//             id: number;
+//             name: string;
+//             avRating: number;
+//             lastName: string;
+//             profilePic: {
+//                 url:string
+//             };
+//         };
+//     }[];
+//     _count: {
+//         interestedUsers: number
+//     };

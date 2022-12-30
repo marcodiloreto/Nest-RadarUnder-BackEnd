@@ -4,7 +4,7 @@ import { EventService } from 'src/event/event.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ImageService } from 'src/image/image.service'
 import 'datejs'
-import { ActivityControlData, ActivityDetails, CreateActivityResponse, CreatedActivitylistData, UpdateActivityDto } from './dtos/activity.dto';
+import { ActivityControlData, ActivityDetails, CreatedActivityResponse, CreatedActivitylistData, UpdateActivityDto, ActivityDataForMapMarker } from './dtos/activity.dto';
 import { create } from 'domain';
 
 export interface Filters {
@@ -102,7 +102,54 @@ export class ActivityService {
     async getAllActivities(filters: Filters)/*: Promise<AcivitySearchResponseDto[]>*/ {
         //TODO: logica de streaming / buffering de resultados Activityservice.getAllActivities
         //TODO: paginacion?? Activityservice.getAllActivities
-        return await this.prisma.activity.findMany({ where: filters })
+        const activities = await this.prisma.activity.findMany({
+            where: filters,
+            include: {
+                createdBy: {
+                    take: 1,   //TODO: debería devolver todo. cappacitar front para ello
+                    select: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                lastName: true,
+                                avRating: true,
+                                profilePic: {
+                                    select: {
+                                        url: true
+                                    }
+                                }
+                            }
+                        }
+                    },
+                },
+                _count: {
+                    select: {
+                        interestedUsers: true
+                    }
+                },
+                disciplines: {
+                    select: {
+                        discipline: {
+                            select: {
+                                id: true,
+                                name: true,
+                            }
+                        }
+                    }
+                },
+                plan: {
+                    select: {
+                        id: true,
+                        startTime: true,
+                        endTime: true,
+                        days: true,
+                    }
+                }
+            }
+        })
+
+        return activities.map(act => new ActivityDataForMapMarker(act))
     }
 
     async getActivityById(id) {
@@ -307,7 +354,7 @@ export class ActivityService {
         })
     }
 
-    async getCreatedActivities(user): Promise<CreateActivityResponse> {
+    async getCreatedActivities(user): Promise<CreatedActivityResponse> {
         const activities = await this.prisma.activity.findMany({
             where: {
                 createdBy: {
