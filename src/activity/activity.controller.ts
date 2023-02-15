@@ -1,11 +1,11 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Param, ParseIntPipe, Post, Put, Query, UnauthorizedException, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Param, ParseEnumPipe, ParseIntPipe, Post, Put, Query, UnauthorizedException, UploadedFiles, UseInterceptors, HttpCode } from '@nestjs/common';
 import { User } from 'src/user/decorator/user.decorator';
 import { ActivityService, Filters } from './activity.service';
-import { addCreatorDto, CreateActivityDto, CreatedActivityResponse, UpdateActivityDto } from './dtos/activity.dto';
+import { addCreatorDto, CreateActivityDto, CreatedActivityResponse, InterestedActivitiesResponse, UpdateActivityDto } from './dtos/activity.dto';
 import { addDaysToday, parseRepeatable, weekDaysParser } from 'src/util/filtersParseFunction';
 import { UserService } from 'src/user/user.service';
 import { Roles } from 'src/decorators/roles.decorator';
-import { UserPermission } from '@prisma/client';
+import { InterestType, UserPermission } from '@prisma/client';
 import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import { ParseFormDataInterceptor } from './interceptor/activity.interceptor';
 @Controller('activity')
@@ -15,7 +15,7 @@ export class ActivityController {
 
     @Get()
     getAllActivities(
-        @Query('term') term: string,
+        @Query('term') term?: string,
         @Query('minPrice') minPrice?: number,
         @Query('maxPrice') maxPrice?: number,
         @Query('afterSetDays') afterSetDays?: number,
@@ -71,10 +71,16 @@ export class ActivityController {
             ...(minRating && { avRating: { gte: minRating } }),
             ...(isSetRepeatable && { repeatable: booleanRepeatable }),
             ...(maxQuota && { maxQuota }),
-            ...(disciplineId && { disciplineId })
+            ...(disciplineId && {
+                disciplines: {
+                    some: {
+                        disciplineId
+                    }
+                }
+            }),
+            isDeleted: null
         }
 
-        console.log(filters)
 
         //TODO configurar DTO!!! ActivityCrontroller.getAllActivities
         return this.activityService.getAllActivities(filters)
@@ -89,6 +95,12 @@ export class ActivityController {
     getCreatedActivities(@User() user): Promise<CreatedActivityResponse> {
 
         return this.activityService.getCreatedActivities(user)
+    }
+
+    @Get('/interested')
+    @Roles(UserPermission.NORMAL, UserPermission.ADMIN)
+    getInterestedActivites(@User() user): Promise<any> {
+        return this.activityService.getInterestedActivities(user.id)
     }
 
     @Get('/details/:id')
@@ -111,21 +123,29 @@ export class ActivityController {
         return this.activityService.createActivity(body, user)
     }
 
-    @Put('/:id')
+
+    @Put('/:relation/:id')
     @Roles(UserPermission.NORMAL, UserPermission.ADMIN)
-    async updateActivity(@Body() body: UpdateActivityDto, @User() user, @Param('id', ParseIntPipe) id: number) {
+    async linkInterestedUser(@User() user, @Param('id', ParseIntPipe) id: number, @Param('relation', new ParseEnumPipe(InterestType)) relation: InterestType) {
         if (!user) throw new ForbiddenException('No podés hacer eso si no estás logueado')
-        await this.activityService.validateUserOwnership(user.id, id)
-        return this.activityService.updateActivity(body, id)
+        return this.activityService.linkInterestedUser(user.id, id, relation)
     }
 
-    @Put('/:id/creator')
+    @Put('/creator/:id')
     @Roles(UserPermission.NORMAL)
     async addCreator(@Body() body: addCreatorDto, @User() user, @Param('id', ParseIntPipe) id: number) {
         if (!user) throw new ForbiddenException('No podés hacer eso si no estás logueado')
         await this.activityService.validateUserOwnership(user.id, id)
         const foundUser = await this.userService.findUserByEmail(body.email)
         return this.activityService.addCreator(foundUser.id, id)
+    }
+
+    @Put('/:id')
+    @Roles(UserPermission.NORMAL, UserPermission.ADMIN)
+    async updateActivity(@Body() body: UpdateActivityDto, @User() user, @Param('id', ParseIntPipe) id: number) {
+        if (!user) throw new ForbiddenException('No podés hacer eso si no estás logueado')
+        await this.activityService.validateUserOwnership(user.id, id)
+        return this.activityService.updateActivity(body, id)
     }
 
     @Delete('/:id')

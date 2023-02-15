@@ -1,9 +1,9 @@
 import { ConflictException, Injectable, PreconditionFailedException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import * as bcrypt from 'bcryptjs'
-import { UserPermission, User, UserType } from '@prisma/client';
+import { UserPermission, UserType } from '@prisma/client';
 import * as jwt from 'jsonwebtoken'
-import { AuthUserResponseDto, UserResponseDto } from '../dtos/auth.dto';
+import { AuthUserResponseDto } from '../dtos/user.dto';
 import { UserService } from '../user.service';
 
 
@@ -53,11 +53,39 @@ export class AuthService {
         return new AuthUserResponseDto(token, createdUser)
     }
 
-    async login(email, password): Promise<AuthUserResponseDto> {
+    async changePassword(id: number, password: string, newPassword: string,) {
+
+        const user = await this.prismaService.user.findUnique({
+            where: {
+                id,
+            },
+        })
+        const isValid = await bcrypt.compare(password, user.password)
+        if (!isValid) throw new PreconditionFailedException('Contraseña incorrecta')
+
+        const passHash = await bcrypt.hash(newPassword, 10)
+        try {
+            await this.prismaService.user.update({
+                where: { id, },
+                data: {
+                    password: passHash
+                }
+            })
+            return true
+        } catch (e) {
+            return false
+        }
+
+    }
+
+    async login(email: string, password: string): Promise<AuthUserResponseDto> {
         const user = await this.prismaService.user.findUnique({
             where: {
                 email,
             },
+            include: {
+                profilePic: true
+            }
         })
         if (!user) throw new PreconditionFailedException('Ese usuario no existe')
 
@@ -76,6 +104,7 @@ export class AuthService {
 
         return new AuthUserResponseDto(token, userData)
     }
+
     generateJWT(user: { id: number, name: string, userPermission: UserPermission, userType: UserType }) {
         return jwt.sign({
             id: user.id,

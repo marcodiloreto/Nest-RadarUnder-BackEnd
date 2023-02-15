@@ -1,8 +1,8 @@
-import { Body, Controller, Get, Header, Headers, HttpCode, Post, PreconditionFailedException } from '@nestjs/common';
+import { Body, Controller, Get, Header, Headers, HttpCode, Post, PreconditionFailedException, Put, ParseIntPipe, Param } from '@nestjs/common';
 import { UserPermission } from '@prisma/client';
 import { Roles } from 'src/decorators/roles.decorator';
 import { User } from '../decorator/user.decorator';
-import { AuthUserResponseDto, CreateUserDto, loginDto } from '../dtos/auth.dto';
+import { AuthUserResponseDto, CreateUserDto, loginDto, PassChangeDto } from '../dtos/user.dto';
 import { AuthService } from './auth.service';
 
 
@@ -30,5 +30,8 @@ export class AuthController {
         return this.authService.login(email, password)
     }
 
-
+    @Put('/:id')
+    async changePass(@Param('id', ParseIntPipe) id: number, @Body() { newPassword, password }: PassChangeDto) {
+        return this.authService.changePassword(id, password, newPassword)
+    }
 }

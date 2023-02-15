@@ -11,9 +11,10 @@ import { AuthGuard } from './user/auth/guards/auth.guard';
 import { EventModule } from './event/event.module';
 import { ImageModule } from './image/image.module';
 import { GoogleApiModule } from './google-api/google-api.module';
+import { RequestModule } from './request/request.module';
 
 @Module({
-  imports: [UserModule, PrismaModule, ActivityModule, DisciplineModule, EventModule, ImageModule, GoogleApiModule],
+  imports: [UserModule, PrismaModule, ActivityModule, DisciplineModule, EventModule, ImageModule, GoogleApiModule, RequestModule],
   controllers: [AppController],
   providers: [AppService, {
     provide: APP_INTERCEPTOR,

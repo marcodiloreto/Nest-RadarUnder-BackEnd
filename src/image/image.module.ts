@@ -10,7 +10,7 @@ import { ActivityModule } from 'src/activity/activity.module';
   providers: [ImageService],
   imports: [PrismaModule, MulterModule.register({
     dest: './uploads',
-  })],
+  }), ActivityModule],
   exports: [ImageService],
 })
 export class ImageModule { }

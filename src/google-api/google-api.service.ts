@@ -4,12 +4,8 @@ import axios, { AxiosInstance } from 'axios'
 @Injectable()
 export class GoogleApiService {
 
-    private api: AxiosInstance
 
     constructor(private readonly client: Client) {
-        this.api = axios.create({
-            baseURL: ''
-        })
     }
 
     async autocompletePlaces(text: string, lat: number, lng: number) {

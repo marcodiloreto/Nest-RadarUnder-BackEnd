@@ -1,5 +1,6 @@
-import { ActivitiesToDisciplines, ParentChild } from "@prisma/client"
-import { Exclude, Type } from "class-transformer"
+import { PartialType } from "@nestjs/mapped-types"
+import { ActivitiesToDisciplines, Discipline, ParentChild } from "@prisma/client"
+import { Exclude, Expose, Type } from "class-transformer"
 import { arrayMinSize, IsArray, IsInt, IsNotEmpty, IsOptional, IsPositive, IsString, ValidateNested } from "class-validator"
 
 export class CreateDisciplineDto {
@@ -12,58 +13,94 @@ export class CreateDisciplineDto {
     @IsOptional()
     @IsArray()
     @ValidateNested({ each: true })
-    @Type(() => parentInsert)
-    parents?: parentInsert[]
+    @Type(() => FamilyInsert)
+    parents?: FamilyInsert[]
     @IsOptional()
     @IsArray()
     @ValidateNested({ each: true })
-    @Type(() => childInsert)
-    childs?: childInsert[]
+    @Type(() => FamilyInsert)
+    childs?: FamilyInsert[]
 }
 
-class parentInsert {
+class FamilyInsert {
     @IsInt()
     @IsPositive()
-    parentId: number
+    id: number
 }
 
-class childInsert {
-    @IsInt()
-    @IsPositive()
-    childId: number
-}
+export class updateDisciplineDto extends PartialType(CreateDisciplineDto) { }
 
-export class updateDisciplineStrings {
-    @IsString()
-    @IsNotEmpty()
-    @IsOptional()
-    name: string
-
-    @IsString()
-    @IsNotEmpty()
-    @IsOptional()
-    description: string
-}
-
-export class DisciplineResponse {
+export class FullDisciplineData {
     id: number
     name: string
     description: string
-    images?: Image[]
-    @Exclude()
-    parents?: ParentChild[]
-    @Exclude()
-    childs?: ParentChild[]
-    @Exclude()
-    activities?: ActivitiesToDisciplines[]
+    images?: { url: string }[]
+
+    @Expose({ name: 'parents' })
+    get getParents() {
+        return this.parents.map(parent => {
+            return {
+                id: parent.parentId,
+                name: parent.parent.name
+            }
+        })
+    }
+
+    @Expose({ name: 'childs' })
+    get getChilds() {
+        return this.childs.map(child => {
+            return {
+                id: child.childId,
+                name: child.child.name
+            }
+        })
+    }
     @Exclude()
     createdAt: Date
     @Exclude()
     updatedAt: Date
 
-    constructor(discipline: Partial<DisciplineResponse>) {
+    @Exclude()
+    parents: { parentId: number, parent: { name: string } }[]
+    @Exclude()
+    childs: { childId: number, child: { name: string } }[]
+
+    constructor(discipline: Partial<FullDisciplineData>) {
         Object.assign(this, discipline)
-        this.images = discipline.images.map((image) => { return new Image(image) })
+    }
+}
+
+export class ListDisciplineData {
+    id: number
+    name: string
+    @Exclude()
+    description: string
+
+    @Expose()
+    get iconUrl() {
+        if (this.images.length > 0) {
+            return this.images[0].url
+        } else {
+            return undefined
+        }
+    }
+
+    @Exclude()
+    images?: { url: string }[]
+    @Exclude()
+    createdAt: Date
+    @Exclude()
+    updatedAt: Date
+
+    constructor(discipline: Partial<(Discipline & {
+        images: {
+            url: string;
+        }[];
+        parents: {
+            parentId: number;
+        }[];
+    })>) {
+        Object.assign(this, discipline)
     }
 }
 
@@ -74,8 +111,6 @@ export class DebounceSearchResponse {
 
     @Exclude()
     description: string
-    @Exclude()
-    images?: Image[]
     @Exclude()
     parents?: ParentChild[]
     @Exclude()
@@ -92,20 +127,3 @@ export class DebounceSearchResponse {
     }
 }
 
-export class Image {
-
-    url: string
-
-    @Exclude()
-    id: number
-    @Exclude()
-    disciplineId?: number
-    @Exclude()
-    activityId?: number
-    @Exclude()
-    uploadedAt: Date
-
-    constructor(image: Partial<Image>) {
-        Object.assign(this, image)
-    }
-}

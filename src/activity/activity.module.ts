@@ -4,12 +4,11 @@ import { ActivityController } from './activity.controller';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { UserModule } from 'src/user/user.module';
 import { EventModule } from 'src/event/event.module';
-import { ImageModule } from '../image/image.module';
 
 @Module({
   providers: [ActivityService],
   controllers: [ActivityController],
-  imports: [PrismaModule, UserModule, EventModule, ImageModule],
+  imports: [PrismaModule, UserModule, EventModule],
   exports: [ActivityService]
 })
 export class ActivityModule { }

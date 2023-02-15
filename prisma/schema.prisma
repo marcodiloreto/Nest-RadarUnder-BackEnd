@@ -5,6 +5,11 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// generator erd {
+//   provider = "prisma-erd-generator"
+//   output   = "../ERD.pdf"
+// }
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -33,7 +38,7 @@ enum Week {
   SABADO
 }
 
-//TODO: apply activityState
+// TODO: apply activityState
 enum ActivityState {
   CONFIRMED
   CANCELED
@@ -58,7 +63,8 @@ model User {
   profilePic     Image?                   @relation(fields: [profilePicId], references: [id])
   interestedIn   UserInterestedActivity[]
   created        UserCreatedActivities[]
-  enrolledIn     UserInEvent[]
+  // enrolledIn     UserInEvent[]
+  UserInEvent    UserInEvent[]
 }
 
 model Activity {
@@ -81,15 +87,22 @@ model Activity {
   interestedUsers UserInterestedActivity[]
   createdBy       UserCreatedActivities[]
   plan            Plan[]
-  event           Event[]
+  // event           Event[]
+  Event           Event[]
+}
+
+enum InterestType {
+  LIKE
+  INSCRIBED
 }
 
 model UserInterestedActivity {
-  user       User     @relation(fields: [userId], references: [id])
+  user       User         @relation(fields: [userId], references: [id])
   userId     Int
-  activity   Activity @relation(fields: [activityId], references: [id])
+  activity   Activity     @relation(fields: [activityId], references: [id])
   activityId Int
-  createdAt  DateTime @default(now())
+  createdAt  DateTime     @default(now())
+  relation   InterestType
 
   @@id([userId, activityId])
 }
@@ -118,7 +131,7 @@ model Plan {
 //TODO: nombre del icono que lo representa (IonIcons)
 model Discipline {
   id          Int                       @id @default(autoincrement())
-  name        String
+  name        String                    @unique
   description String
   images      Image[]
   parents     ParentChild[]             @relation("Child")
@@ -194,4 +207,19 @@ model ActivitiesToDisciplines {
   createdAt    DateTime   @default(now())
 
   @@id([disciplineId, activityId])
+}
+
+enum RequestStatus {
+  PENDING
+  REJECTED
+  ACCEPTED
+}
+
+model Request {
+  id             Int           @id @default(autoincrement())
+  disciplineName String
+  description    String?
+  status         RequestStatus @default(PENDING)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime?     @updatedAt
 }

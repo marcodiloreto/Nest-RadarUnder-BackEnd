@@ -88,13 +88,19 @@ export class addCreatorDto {
 }
 
 export class CreatedActivityResponse {
-    activities: CreatedActivitylistData[]
+    activities: ActivitylistData[]
 }
 
-export class CreatedActivitylistData {
+export class InterestedActivitiesResponse {
+    inscribed: ActivitylistData[];
+    liked: ActivitylistData[]
+}
+
+export class ActivitylistData {
 
     id: number
     name: string
+    @Exclude()
     description: string
     price: number
     @Exclude() //TODO: rating y maxQuota 
@@ -123,9 +129,11 @@ export class CreatedActivitylistData {
 
     @Expose({ name: 'disciplines' })
     get getDiscipline() {
+
         return this.disciplines.map(obj => {
             return obj.discipline
         })
+
     }
 
     @Exclude()
@@ -136,9 +144,11 @@ export class CreatedActivitylistData {
 
     @Expose({ name: 'createdBy' })
     get getcreated() {
+
         return this.createdBy.map(object => {
             return object.user
         })
+
 
     }
 
@@ -234,6 +244,8 @@ export class ActivityDetails {
     @Exclude()
     createdBy: { user: { phone: string; email: string } }[]
 
+
+    description: string
     images: { url: string }[]
 
     constructor(details: any) {

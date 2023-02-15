@@ -1,6 +1,7 @@
-import { UserPermission, UserType, Image, UserInterestedActivity, UserCreatedActivities, UserInEvent } from '@prisma/client';
+import { OmitType, PartialType } from '@nestjs/mapped-types';
+import { UserPermission, UserType, Image, UserInterestedActivity, UserCreatedActivities, /*UserInEvent*/ } from '@prisma/client';
 import { Exclude, Expose } from 'class-transformer'
-import { Contains, IsEmail, IsNotEmpty, IsOptional, IsPhoneNumber, IsString, MinLength } from 'class-validator'
+import { Contains, IsEmail, IsNotEmpty, IsOptional, IsPhoneNumber, IsString, Matches, MinLength } from 'class-validator'
 
 
 export class CreateUserDto {
@@ -18,8 +19,22 @@ export class CreateUserDto {
     email: string
     @IsString()
     @MinLength(8)
+    @Matches(/((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, { message: 'Password must have special chars and Uppercase letters' })
     password: string
 }
+
+export class UpdateUserDto extends OmitType(PartialType(CreateUserDto), [
+    'email', 'password',
+] as const) { }
+
+export class PassChangeDto {
+    @IsString()
+    password: string
+    @IsString()
+    @MinLength(8)
+    newPassword: string
+}
+
 
 export class loginDto {
     @IsEmail()
@@ -83,8 +98,8 @@ export class UserResponseDto {
     interestedIn: UserInterestedActivity[]
     @Exclude()
     created: UserCreatedActivities[]
-    @Exclude()
-    enrolledIn: UserInEvent[]
+    // @Exclude()
+    // enrolledIn: UserInEvent[]
 
 
     constructor(data: Partial<UserResponseDto>) {

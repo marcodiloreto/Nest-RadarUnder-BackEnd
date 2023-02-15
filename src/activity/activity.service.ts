@@ -1,13 +1,14 @@
 import { ConflictException, Injectable, NotFoundException, PreconditionFailedException, UnauthorizedException } from '@nestjs/common';
-import { Plan, Week } from '@prisma/client';
+import { Plan, Week, InterestType, Activity } from '@prisma/client';
 import { EventService } from 'src/event/event.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ImageService } from 'src/image/image.service'
 import 'datejs'
-import { ActivityControlData, ActivityDetails, CreatedActivityResponse, CreatedActivitylistData, UpdateActivityDto, ActivityDataForMapMarker } from './dtos/activity.dto';
+import { ActivityControlData, ActivityDetails, CreatedActivityResponse, ActivitylistData, UpdateActivityDto, ActivityDataForMapMarker } from './dtos/activity.dto';
 import { create } from 'domain';
 
 export interface Filters {
+    term?: string;
     name?: {
         contains: string;
         mode: 'insensitive'
@@ -39,7 +40,12 @@ export interface Filters {
         lte?: number,
         gte?: number
     },
-    disciplineId?: number
+    disciplines?: {
+        some: {
+            disciplineId: number
+        }
+    },
+    isDeleted: null
 }
 
 
@@ -97,7 +103,7 @@ class UpdateActivityFullData extends updateActivityData {
 @Injectable()
 export class ActivityService {
 
-    constructor(private readonly prisma: PrismaService, private readonly eventService: EventService, private readonly imageService: ImageService) { }
+    constructor(private readonly prisma: PrismaService, private readonly eventService: EventService) { }
 
     async getAllActivities(filters: Filters)/*: Promise<AcivitySearchResponseDto[]>*/ {
         //TODO: logica de streaming / buffering de resultados Activityservice.getAllActivities
@@ -148,11 +154,10 @@ export class ActivityService {
                 }
             }
         })
-
         return activities.map(act => new ActivityDataForMapMarker(act))
     }
 
-    async getActivityById(id) {
+    async getActivityById(id: number) {
         const activity = await this.prisma.activity.findUnique({
             where: {
                 id
@@ -415,7 +420,7 @@ export class ActivityService {
                 }
             }
         })
-        const response = { activities: activities.map((act) => { return new CreatedActivitylistData(act) }) }
+        const response = { activities: activities.map((act) => { return new ActivitylistData(act) }) }
         return response;
     }
 
@@ -423,6 +428,7 @@ export class ActivityService {
         const details = await this.prisma.activity.findUnique({
             where: { id },
             select: {
+                description: true,
                 images: {
                     select: {
                         url: true,
@@ -480,5 +486,204 @@ export class ActivityService {
         })
     }
 
+    async linkInterestedUser(userId: number, activityId: number, relation: InterestType) {
+        const owned = await this.prisma.userCreatedActivities.findFirst({
+            where: {
+                AND: [
+                    {
+                        activityId,
+                    },
+                    {
+                        userId
+                    }
+                ]
+            }
+        })
+        if (owned) return false
+
+        const link = await this.prisma.userInterestedActivity.findUnique({
+            where: {
+                userId_activityId: {
+                    activityId,
+                    userId
+                }
+            }
+        })
+        console.log(link)
+        if (link) {
+            await this.prisma.userInterestedActivity.update({
+                data: {
+                    relation,
+                },
+                where: {
+                    userId_activityId: {
+                        activityId,
+                        userId
+                    }
+                }
+            })
+        } else {
+            await this.prisma.userInterestedActivity.create({
+                data: {
+                    activityId,
+                    userId,
+                    relation
+                }
+            })
+        }
+
+        return true
+    }
+
+    async getInterestedActivities(userId: number) {
+        const inscribedResults = await this.prisma.activity.findMany({
+            where: {
+                interestedUsers: {
+                    some: {
+                        AND: [{
+                            userId
+                        }, {
+                            relation: 'INSCRIBED'
+                        }]
+                    }
+                }
+            },
+            include: {
+                images: {
+                    take: 3,
+                    select: {
+                        url: true,
+                    }
+                },
+                createdBy: {
+                    take: 1,
+                    select: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                lastName: true,
+                                avRating: true,
+                                profilePic: {
+                                    select: {
+                                        url: true
+                                    }
+                                }
+                            }
+                        }
+                    },
+                },
+                _count: {
+                    select: {
+                        interestedUsers: true
+                    }
+                },
+                disciplines: {
+                    select: {
+                        discipline: {
+                            select: {
+                                id: true,
+                                name: true,
+                            }
+                        }
+                    }
+                },
+                plan: {
+                    select: {
+                        id: true,
+                        startTime: true,
+                        endTime: true,
+                        days: true,
+                    }
+                }
+            }
+        })
+
+        const inscribed = inscribedResults.map(ac => new ActivitylistData(ac))
+
+
+        const likedResults = await this.prisma.activity.findMany({
+            where: {
+                interestedUsers: {
+                    some: {
+                        AND: [{
+                            userId
+                        }, {
+                            relation: 'LIKE'
+                        }]
+                    }
+                }
+            },
+            include: {
+                images: {
+                    take: 3,
+                    select: {
+                        url: true,
+                    }
+                },
+                createdBy: {
+                    take: 1,
+                    select: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                lastName: true,
+                                avRating: true,
+                                profilePic: {
+                                    select: {
+                                        url: true
+                                    }
+                                }
+                            }
+                        }
+                    },
+                },
+                _count: {
+                    select: {
+                        interestedUsers: true
+                    }
+                },
+                disciplines: {
+                    select: {
+                        discipline: {
+                            select: {
+                                id: true,
+                                name: true,
+                            }
+                        }
+                    }
+                },
+                plan: {
+                    select: {
+                        id: true,
+                        startTime: true,
+                        endTime: true,
+                        days: true,
+                    }
+                }
+            }
+        })
+
+        const liked = likedResults.map(ac => new ActivitylistData(ac))
+
+        return {
+            inscribed,
+            liked,
+        }
+    }
+
+    async getInscribedCount(activityId: number) {
+        return this.prisma.userInterestedActivity.count({
+            where: {
+                AND: [{
+                    activityId
+                }, {
+                    relation: 'INSCRIBED'
+                }]
+            }
+        })
+
+    }
 
 }
