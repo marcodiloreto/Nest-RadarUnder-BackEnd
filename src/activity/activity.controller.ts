@@ -149,7 +149,7 @@ export class ActivityController {
     }
 
     @Delete('/:id')
-    @Roles(UserPermission.NORMAL)
+    @Roles(UserPermission.NORMAL, UserPermission.ADMIN)
     async deleteActivity(@Param('id', ParseIntPipe) id: number, @User() user) {
         if (!user) throw new ForbiddenException('No podés hacer eso si no estás logueado')
         await this.activityService.validateUserOwnership(user.id, id)
@@ -157,7 +157,7 @@ export class ActivityController {
     }
 
     @Delete('/:id/undo')
-    @Roles(UserPermission.NORMAL)
+    @Roles(UserPermission.NORMAL, UserPermission.ADMIN)
     async undoDeleteActivity(@Param('id', ParseIntPipe) id: number, @User() user) {
         if (!user) throw new ForbiddenException('No podés hacer eso si no estás logueado')
         await this.activityService.validateUserOwnership(user.id, id)

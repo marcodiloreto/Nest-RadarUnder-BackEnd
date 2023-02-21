@@ -284,7 +284,7 @@ export class ActivityService {
             }
         })
 
-        if (!exists) throw new NotFoundException('No se encontrño la actividad')
+        if (!exists) throw new NotFoundException('No se encontró la actividad')
 
         const deleteTime = new Date()
         return await this.prisma.activity.update({
@@ -303,7 +303,7 @@ export class ActivityService {
             }
         })
 
-        if (!exists) throw new NotFoundException('No se encontrño la actividad')
+        if (!exists) throw new NotFoundException('No se encontró la actividad')
 
         return await this.prisma.activity.update({
             where: { id },
